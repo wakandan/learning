@@ -1,4 +1,12 @@
 clear; close all; clc; more off
+vocabMap = javaObject('java.util.Hashtable');
+vocabList = getVocabList();
+i = 1;
+while i<=length(vocabList)
+  vocabMap.put(vocabList{i}, i);
+  i += 1;
+end
+
 
 files = glob('/home/akai/projects/learning/machine-learning-ex6/ex6/easy_ham/*.*');
 
@@ -15,8 +23,7 @@ for i=1:200
   fprintf('loading email %d\n', i);
   [~, name] = fileparts(files{i});
   file = fileread(files{i});
-  content = processEmail(file);
-  features = emailFeatures(content);
+  features = process_email(file, vocabMap);
   if i<150
     X = [X; features'];
     y = [y; 0];
@@ -39,8 +46,7 @@ for i=1:200
   fprintf('loading spam email %d\n', i);
   [~, name] = fileparts(files{i});
   file = fileread(files{i});
-  content = processEmail(file);
-  features = emailFeatures(content);
+  features = process_email(file, vocabMap);
   if i<150
     X = [X; features'];
     y = [y; 1];
@@ -58,3 +64,6 @@ model = svmTrain(X, y, C, @linearKernel);
 p = svmPredict(model, test_X);
 
 fprintf('Training Accuracy: %f\n', mean(double(p == test_y)) * 100);
+
+p = svmPredict(model, val_X);
+fprintf('Training Accuracy validation: %f\n', mean(double(p == val_y)) * 100);
