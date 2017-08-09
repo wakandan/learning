@@ -1,9 +1,9 @@
 function word_indices = processEmail(email_contents)
 %PROCESSEMAIL preprocesses a the body of an email and
-%returns a list of word_indices 
-%   word_indices = PROCESSEMAIL(email_contents) preprocesses 
-%   the body of an email and returns a list of indices of the 
-%   words contained in the email. 
+%returns a list of word_indices
+%   word_indices = PROCESSEMAIL(email_contents) preprocesses
+%   the body of an email and returns a list of indices of the
+%   words contained in the email.
 %
 
 % Load Vocabulary
@@ -18,8 +18,8 @@ word_indices = [];
 % Uncomment the following lines if you are working with raw emails with the
 % full headers
 
-% hdrstart = strfind(email_contents, ([char(10) char(10)]));
-% email_contents = email_contents(hdrstart(1):end);
+hdrstart = strfind(email_contents, ([char(10) char(10)]));
+email_contents = email_contents(hdrstart(1):end);
 
 % Lower case
 email_contents = lower(email_contents);
@@ -49,7 +49,7 @@ email_contents = regexprep(email_contents, '[$]+', 'dollar');
 % ========================== Tokenize Email ===========================
 
 % Output the email to screen as well
-fprintf('\n==== Processed Email ====\n\n');
+% fprintf('\n==== Processed Email ====\n\n');
 
 % Process file
 l = 0;
@@ -60,13 +60,13 @@ while ~isempty(email_contents)
     [str, email_contents] = ...
        strtok(email_contents, ...
               [' @$/#.-:&*+=[]?!(){},''">_<;%' char(10) char(13)]);
-   
+
     % Remove any non alphanumeric characters
     str = regexprep(str, '[^a-zA-Z0-9]', '');
 
-    % Stem the word 
+    % Stem the word
     % (the porterStemmer sometimes has issues, so we use a try catch block)
-    try str = porterStemmer(strtrim(str)); 
+    try str = porterStemmer(strtrim(str));
     catch str = ''; continue;
     end;
 
@@ -87,15 +87,19 @@ while ~isempty(email_contents)
     %               vector. Concretely, if str = 'action', then you should
     %               look up the vocabulary list to find where in vocabList
     %               'action' appears. For example, if vocabList{18} =
-    %               'action', then, you should add 18 to the word_indices 
+    %               'action', then, you should add 18 to the word_indices
     %               vector (e.g., word_indices = [word_indices ; 18]; ).
-    % 
+    %
     % Note: vocabList{idx} returns a the word with index idx in the
     %       vocabulary list.
-    % 
+    %
     % Note: You can use strcmp(str1, str2) to compare two strings (str1 and
     %       str2). It will return 1 only if the two strings are equivalent.
     %
+
+  member = ismember(vocabList, str);
+  [i, j] = max(member);
+  word_indices = [word_indices; j];
 
 
 
@@ -110,16 +114,16 @@ while ~isempty(email_contents)
 
 
     % Print to screen, ensuring that the output lines are not too long
-    if (l + length(str) + 1) > 78
-        fprintf('\n');
-        l = 0;
-    end
-    fprintf('%s ', str);
-    l = l + length(str) + 1;
+    % if (l + length(str) + 1) > 78
+        % fprintf('\n');
+        % l = 0;
+    % end
+    % fprintf('%s ', str);
+    % l = l + length(str) + 1;
 
 end
 
 % Print footer
-fprintf('\n\n=========================\n');
+% fprintf('\n\n=========================\n');
 
 end
