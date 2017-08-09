@@ -48,7 +48,13 @@ x = zeros(n, 1);
 %
 %
 
-
+i = 1;
+size(word_indices);
+while i<length(word_indices)
+	j = word_indices(i);
+	x(j) = 1;	
+	i += 1;
+end
 
 
 
