@@ -1,0 +1,3 @@
+{
+    print NR " " NF " " RS " " FILENAME
+}
