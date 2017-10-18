@@ -22,9 +22,6 @@ def sigmoid_prime(z):
 def label(x):
     return x*0.5+10
 
-def transform(x):
-    return x*0.1
-
 def generate_values():
     xs = []
     ys = []
