@@ -2,9 +2,10 @@ import numpy as np
 import math
 import random
 from pprint import pprint
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from sklearn import preprocessing
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+np.seterr(all='raise')
 
 
 
@@ -33,56 +34,37 @@ def generate_values():
         ys.append(label(x))
     return xs, ys
 
-def normalize(xs):
-    result = []
-    min_value = min(xs)
-    max_value = max(xs)
-    for x in xs:
-        result.append((x-min_value)*1.0/(max_value-min_value))
-    return min_value, max_value, result
-
-def denormalize(x, minx, maxx):
-    return x * (maxx - minx) + minx
-
-def f(x, a, b, c, d):
-    return a*x**3 + b*x**2 + c*x + d
-
 scaler = StandardScaler()
+
+def calc_derivatives(inp):
+    """
+    input x is an array of (1,)
+    """
+    derivatives = np.concatenate([inp**3, inp**2, inp, np.ones(inp.size).reshape(-1, 1)], axis=1)
+    return derivatives
+
 xs_dat, ys = generate_values()
-xs_dat = np.asarray(xs_dat)
-xs_dat = xs_dat.reshape(-1, 1)
+xs_dat = np.asarray(xs_dat).reshape(-1, 1) #scaler only takes input of matrix
 xs = scaler.fit_transform(xs_dat)
-#minx, maxx, xs = normalize(xs)
-a = 2 
-b = 3
-c = 10
-d= -10
+xs_powers = calc_derivatives(xs)
+ys = np.asarray(ys)
+ys = ys.reshape(-1, 1)
+weights = np.asarray([2, 3, 10, -10])
 max_epoc = 1e3
-learning_rate = 6*1.e-4
+learning_rate = 1e-3
 epoc = 0
 while epoc < max_epoc:
-    gradient_a = gradient_b = gradient_c = gradient_d = 0
-    cost = 0
-    for x, y in zip(xs, ys):
-        error = f(x, a, b, c, d) - y
-        cost += error * error
-        gradient_a += error * x**3
-        gradient_b += error * x**2
-        gradient_c += error * x
-        gradient_d += error 
-    a -= gradient_a*learning_rate
-    b -= gradient_b*learning_rate
-    c -= gradient_c*learning_rate
-    d -= gradient_d*learning_rate
-    for var in 'epoc cost gradient_a a b c d'.split():
+    y = xs_powers.dot(weights.reshape(-1, 1))
+    error = y - ys
+    cost = np.sum(error**2)
+    gradients = error.transpose().dot(xs_powers) 
+    weights = weights - (gradients * learning_rate)
+    for var in 'epoc cost weights'.split():
        print "%s = %3s; " % (var, vars()[var]), 
     print 
     epoc += 1
-test_input = np.asarray([-1, 5, 10, 100])
-test_input = test_input.reshape(-1, 1)
+test_input = np.asarray([-1, 5, 10, 100]).reshape(-1, 1)
 expected_output = label(test_input)
 scaled_test_output = scaler.transform(test_input)
-observed_output = f(scaled_test_output, a, b, c, d)
+observed_output = calc_derivatives(scaled_test_output).dot(weights.reshape(-1, 1))
 print 'test output = %s, expected = %s, error = %s' % (expected_output, observed_output, sum(observed_output-expected_output))
-#plt.plot(xs, [label(x) for x in xs_dat], 'r-', [f(x, a, b, c, d) for x in xs])
-#plt.show()
