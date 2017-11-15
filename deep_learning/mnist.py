@@ -17,15 +17,16 @@ def sigmoid_prime(z):  # sigmoid prime
 
 class Network:
     def __init__(self, layer_sizes):
-        self.layers = []
         self.weights = []
         self.biases = []
-        self.layers = len(layer_sizes)
-        for input_size, output_size in zip(layer_sizes[:-1], layer_sizes[1:]):
-            weights = np.random.normal(size=(output_size, input_size))
-            self.weights.append(weights)
-            bias = np.random.normal(size=(output_size, 1))
-            self.biases.append(bias)
+        self.num_layers = len(layer_sizes)
+        self.weights = [np.random.normal(size=(output_size, input_size)) for input_size, output_size in zip(layer_sizes[:-1], layer_sizes[1:])]
+        self.biases = [np.random.normal(size=(output_size, 1)) for input_size, output_size in zip(layer_sizes[:-1], layer_sizes[1:])]
+        # for input_size, output_size in zip(layer_sizes[:-1], layer_sizes[1:]):
+            # weights = np.random.normal(size=(output_size, input_size))
+            # self.weights.append(weights)
+            # bias = np.random.normal(size=(output_size, 1))
+            # self.biases.append(bias)
 
     def forward(self, x):
         a = x
@@ -56,7 +57,7 @@ class Network:
         delta = (activations[-1] - y) * sigmoid_prime(zs[-1])  # final detal_L
         nabla_b[-1] = delta  # important
         nabla_w[-1] = np.dot(delta, activations[-2].transpose())  # important
-        for l in range(2, self.layers):
+        for l in range(2, self.num_layers):
             z = zs[-l]
             delta = np.dot(self.weights[-l + 1].transpose(), delta) * sigmoid_prime(z)
             nabla_b[-l] = delta
@@ -108,7 +109,7 @@ class Network:
         self.biases = [b - (eta / len(mini_batch)) * nb for b, nb in zip(self.biases, nabla_b)]
 
 
-n = input_size = len(training_data[0][0])
+n = len(training_data[0][0])
 network = Network([n, 30, 10])
 network.sgd(training_data, epochs=30, mini_batch_size=10, eta=3.0, test_data=test_data)
 print(network.evaluate(test_data))
