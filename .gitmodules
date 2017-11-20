@@ -1,0 +1,3 @@
+[submodule "neural-networks-and-deep-learning"]
+	path = neural-networks-and-deep-learning
+	url = https://github.com/mnielsen/neural-networks-and-deep-learning.git
