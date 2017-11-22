@@ -22,6 +22,17 @@ class TestConvLayer(unittest.TestCase):
     def test_forward(self):
         size = 10
         inp = np.random.normal(size=(size, size))
-        conv_layer = ConvLayer(size=3)
+        conv_layer = ConvLayer(filter_size=3)
         output = conv_layer.forward(inp)
         self.assertEqual(output.shape, (4, 4))
+
+    def test_backprop(self):
+        size = 10
+        inp = np.random.normal(size=(size, size))
+        conv_layer = ConvLayer(filter_size=3)
+        output_size = size - conv_layer.filter_size + 1
+        delta_array_size = output_size * output_size
+        delta_array = np.random.normal(size=(delta_array_size, 1))
+        weight_gradient_result, past_delta_result = conv_layer.backprop(delta_array, inp)
+        self.assertEqual(weight_gradient_result.shape, (conv_layer.filter_size, conv_layer.filter_size))
+        self.assertEqual(past_delta_result.shape, (size, size))

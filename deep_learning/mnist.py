@@ -40,9 +40,9 @@ def sigmoid_prime(z):  # sigmoid prime
 
 
 class ConvLayer:
-    def __init__(self, size, fn_activation=sigmoid):
-        self.size = size
-        self.weight = np.random.normal(size=(size, size))
+    def __init__(self, filter_size, fn_activation=sigmoid):
+        self.filter_size = filter_size
+        self.weight_array = np.random.normal(size=(filter_size, filter_size))
         self.bias = np.random.normal()
         self.fn_activation = fn_activation
 
@@ -51,13 +51,14 @@ class ConvLayer:
         :param inp:
         :return:
         """
-        output_size = inp.shape[0] - self.size + 1
+        output_size = inp.shape[0] - self.filter_size + 1
         output = np.zeros([output_size, output_size])
-        weight_len = self.size * self.size
-        weight = self.weight.reshape([1, weight_len])
+        weight_len = self.filter_size * self.filter_size
+        weight = self.weight_array.reshape([1, weight_len])
         for i in range(0, output_size, stride):
             for j in range(0, output_size, stride):
-                output[i][j] = np.dot(weight, inp[i:i + self.size][:, j:j + self.size].reshape([weight_len, 1])) + \
+                output[i][j] = np.dot(weight,
+                                      inp[i:i + self.filter_size][:, j:j + self.filter_size].reshape([weight_len, 1])) + \
                                self.bias
         return self.fn_activation(output)
 
@@ -71,7 +72,62 @@ class ConvLayer:
 
     def forward(self, inp, stride=1, pool_size=2):
         output = self.forward_helper(inp, stride)
+        self.input_array_shape = inp.shape
+        self.input_array_size = inp.shape[0]
         return self.max_pooling(output, pool_size)
+
+    def backprop(self, delta_array, inp, stride=1):
+        """
+        delta_array is a (input_array_size - filter_size + 1) x 1. It should be the result of reshaping the max-pooled
+        output matrix
+        :return:
+        delta_array_last: a input_array_size x input_array_size
+        """
+        # forward step
+        output_size = inp.shape[0] - self.filter_size + 1
+        input_size = inp.shape[0]
+        weighted_input = np.zeros([output_size, output_size])
+        weight_len = self.filter_size * self.filter_size
+        weight = self.weight_array.reshape([1, weight_len])
+        for i in range(0, output_size, stride):
+            for j in range(0, output_size, stride):
+                weighted_input[i][j] = np.dot(weight,
+                                              inp[i:i + self.filter_size][:, j:j + self.filter_size].reshape(
+                                                  [weight_len, 1])) + \
+                                       self.bias
+        activation = self.fn_activation(weighted_input)
+        delta_array_size = int(np.sqrt(delta_array.shape[0]))
+        delta_array = delta_array.reshape(delta_array_size, delta_array_size)
+        weight_gradient_array = np.zeros((self.filter_size, self.filter_size))
+        print('input size', inp.shape)
+        print('delta array shape', delta_array.shape)
+        print('delta array size', delta_array_size)
+        for a in range(self.filter_size):
+            for b in range(self.filter_size):
+                weight_gradient = 0
+                for i in range(delta_array_size):
+                    for j in range(delta_array_size):
+                        # print(a, b, i, j)
+                        x = delta_array[i][j] * sigmoid_prime(weighted_input[i][j]) * inp[i + a][j + b]
+                        weight_gradient += x
+                weight_gradient_array[a][b] = weight_gradient
+
+        back_delta_array = np.zeros((input_size, input_size))
+        for i in range(input_size):
+            for j in range(input_size):
+                for a in range(self.filter_size):
+                    for b in range(self.filter_size):
+                        if not (0 <= i - a <= input_size - self.filter_size) or not (
+                                        0 <= j - b <= input_size - self.filter_size):
+                            continue
+                        back_delta_array[i][j] += delta_array[i - a][j - b] * sigmoid_prime(inp[i - a][j - b]) * \
+                                                  self.weight_array[a][b]
+        back_delta_array = back_delta_array / (input_size * input_size)
+        print(back_delta_array)
+        # getting average of gradient array
+        weight_gradient_array = weight_gradient_array / (self.filter_size * self.filter_size)
+        print(weight_gradient_array)
+        return weight_gradient_array, back_delta_array
 
 
 class Network:
