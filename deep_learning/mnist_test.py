@@ -1,6 +1,9 @@
 import unittest
+
 import numpy as np
+
 from mnist import ConvLayer, FullyConnectedLayer
+from mnist import ConvoNetwork
 
 
 class TestConvLayer(unittest.TestCase):
@@ -68,3 +71,16 @@ class TestFullyConnected(unittest.TestCase):
         self.assertEqual((10, 1), back_delta_array.shape)
         self.assertEqual((10, 5), gradient_w_array.shape)
         self.assertEqual((5, 1), gradient_b_array.shape)
+
+
+class TestConvoNetwork(unittest.TestCase):
+    def test_forward(self):
+        size = 4
+        inp = np.random.normal(size=(size, 1))
+        network = ConvoNetwork(layers=(
+            FullyConnectedLayer(inp_size=size, out_size=6),
+            FullyConnectedLayer(inp_size=6, out_size=3)
+        ))
+        activation = network.forward(inp)
+        print(activation)
+        self.assertEqual((3, 1), activation.shape)

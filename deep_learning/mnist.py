@@ -172,8 +172,10 @@ class FullyConnectedLayer:
         self.bias_array = np.random.normal(size=(out_size, 1))
 
     def forward(self, inp):
+        print(self.inp_size, self.weight_array.shape)
         assert inp.shape == (self.inp_size, 1), "inp.shape %s != (inp_size, 1) (%s, 1)" % (inp.shape, self.inp_size)
         z = np.dot(self.weight_array, inp) + self.bias_array
+        print(z.shape)
         a = self.fn_activation(z)
         return a
 
@@ -185,6 +187,18 @@ class FullyConnectedLayer:
         gradient_b = delta_array
         gradient_w = np.dot(inp, delta_array.transpose())
         return gradient_w, gradient_b, delta_past_array
+
+
+class ConvoNetwork:
+    def __init__(self, layers):
+        self.layers = layers
+
+    def forward(self, inp):
+        layer_input_array = inp
+        for layer in self.layers:
+            weighted_input_array = layer.forward(layer_input_array)
+            layer_input_array = layer.fn_activation(weighted_input_array)
+        return layer_input_array
 
 
 class Network:
