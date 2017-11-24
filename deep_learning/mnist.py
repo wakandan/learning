@@ -39,7 +39,7 @@ def sigmoid_prime(z):  # sigmoid prime
     return sigmoid(z) * (1.0 - sigmoid(z))
 
 
-class ConvLayer:
+class ConvoLayer:
     def __init__(self, filter_size=3, fn_activation=sigmoid, fn_derive=sigmoid_prime):
         self.filter_size = filter_size
         self.weight_array = np.random.normal(size=(filter_size, filter_size))

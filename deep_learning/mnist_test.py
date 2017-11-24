@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from mnist import ConvLayer, FullyConnectedLayer
+from mnist import ConvoLayer, FullyConnectedLayer
 from mnist import ConvoNetwork
 
 
@@ -11,28 +11,28 @@ class TestConvLayer(unittest.TestCase):
         size = 10
         conv_size = 5
         inp = np.arange(size * size).reshape(size, size)
-        conv_layer = ConvLayer(conv_size)
+        conv_layer = ConvoLayer(conv_size)
         result = conv_layer.forward_helper(inp)
         self.assertEqual(result.shape, (6, 6))
 
     def test_max_pooling(self):
         size = 4
         inp = np.arange(size * size).reshape(size, size)
-        conv_layer = ConvLayer(5)
+        conv_layer = ConvoLayer(5)
         output = conv_layer.max_pooling(inp)
         self.assertTrue(np.all(np.equal(np.asarray([5, 7, 13, 15]).reshape(2, 2), output)))
 
     def test_forward(self):
         size = 10
         inp = np.random.normal(size=(size, size))
-        conv_layer = ConvLayer()
+        conv_layer = ConvoLayer()
         output = conv_layer.forward(inp)
         self.assertEqual(output.shape, (4, 4))
 
     def test_backprop(self):
         size = 6
         inp = np.random.normal(size=(size, size))
-        conv_layer = ConvLayer()
+        conv_layer = ConvoLayer()
         output_size = (size - conv_layer.filter_size + 1) / 2
         delta_array_size = output_size * output_size
         delta_array = np.random.normal(size=(delta_array_size, 1))
@@ -43,7 +43,7 @@ class TestConvLayer(unittest.TestCase):
     def test_max_position_array(self):
         size = 10
         inp = np.arange(size * size).reshape(size, size)
-        conv_layer = ConvLayer()
+        conv_layer = ConvoLayer()
         out = conv_layer.get_max_position(inp)
         self.assertEqual(len(out), 10)
         self.assertEqual(len(out[0]), 10)
@@ -74,7 +74,7 @@ class TestFullyConnected(unittest.TestCase):
 
 
 class TestConvoNetwork(unittest.TestCase):
-    def test_forward(self):
+    def test_forward_1(self):
         size = 4
         inp = np.random.normal(size=(size, 1))
         network = ConvoNetwork(layers=(
@@ -84,3 +84,15 @@ class TestConvoNetwork(unittest.TestCase):
         activation = network.forward(inp)
         print(activation)
         self.assertEqual((3, 1), activation.shape)
+
+    def test_forward_2(self):
+        size = 10
+        inp = np.random.normal(size=(size, size))
+        network = ConvoNetwork(layers=(
+            ConvoLayer(),
+            FullyConnectedLayer(inp_size=4, out_size=3)
+        ))
+        network.forward(inp)
+
+
+
