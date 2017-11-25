@@ -36,7 +36,7 @@ class TestConvLayer(unittest.TestCase):
         output_size = (size - conv_layer.filter_size + 1) / 2
         delta_array_size = output_size * output_size
         delta_array = np.random.normal(size=(delta_array_size, 1))
-        weight_gradient_result, past_delta_result = conv_layer.backprop(delta_array, inp)
+        weight_gradient_result, _, past_delta_result = conv_layer.backprop(inp, delta_array)
         self.assertEqual(weight_gradient_result.shape, (conv_layer.filter_size, conv_layer.filter_size))
         self.assertEqual(past_delta_result.shape, (size, size))
 
@@ -85,14 +85,79 @@ class TestConvoNetwork(unittest.TestCase):
         print(activation)
         self.assertEqual((3, 1), activation.shape)
 
+    def test_backprop_1(self):
+        inp_size = 4
+        out_size = 3
+        inp = np.random.normal(size=(inp_size, 1))
+        out = np.random.normal(size=(out_size, 1))
+        network = ConvoNetwork(layers=(
+            FullyConnectedLayer(inp_size=inp_size, out_size=6),
+            FullyConnectedLayer(inp_size=6, out_size=out_size)
+        ))
+        backprop = network.backprop(inp, out)
+
     def test_forward_2(self):
         size = 10
         inp = np.random.normal(size=(size, size))
         network = ConvoNetwork(layers=(
             ConvoLayer(),
-            FullyConnectedLayer(inp_size=4, out_size=3)
+            FullyConnectedLayer(inp_size=16, out_size=3)
         ))
-        network.forward(inp)
+        activation = network.forward(inp)
+        print('activation', activation)
+        print('activation shape', activation.shape)
+        self.assertEqual((3, 1), activation.shape)
 
+    def test_backprop_2(self):
+        inp_size = 10
+        out_size = 3
+        inp_array = np.random.normal(size=(inp_size, inp_size))
+        network = ConvoNetwork(layers=(
+            ConvoLayer(),
+            FullyConnectedLayer(inp_size=16, out_size=out_size)
+        ))
+        out_array = np.random.normal(size=(out_size, 1))
+        network.backprop(inp_array, out_array)
 
+    def test_forward_3(self):
+        network = ConvoNetwork(layers=(
+            FullyConnectedLayer(inp_size=5, out_size=100),
+            ConvoLayer()
+        ))
+        size = 5
+        inp = np.random.normal(size=(size, 1))
+        activation = network.forward(inp)
+        print('activation', activation)
+        print('activation shape', activation.shape)
+        self.assertEqual((4, 4), activation.shape)
 
+    def test_backprop_3(self):
+        network = ConvoNetwork(layers=(
+            FullyConnectedLayer(inp_size=5, out_size=100),
+            ConvoLayer()
+        ))
+        inp_size = 5
+        out_size = 4
+        inp_array = np.random.normal(size=(inp_size, 1))
+        out_array = np.random.normal(size=(out_size, out_size))
+        network.backprop(inp_array, out_array)
+
+    def test_forward_4(self):
+        network = ConvoNetwork(layers=(
+            ConvoLayer(),
+            ConvoLayer()
+        ))
+        inp = np.random.normal(size=(10, 10))
+        activation = network.forward(inp)
+        print('activation', activation)
+        print('activation shape', activation.shape)
+        self.assertEqual((1, 1), activation.shape)
+
+    def test_backprop_4(self):
+        network = ConvoNetwork(layers=(
+            ConvoLayer(),
+            ConvoLayer()
+        ))
+        inp = np.random.normal(size=(14, 14))
+        out = np.random.normal(size=(2, 2))
+        network.backprop(inp, out)
