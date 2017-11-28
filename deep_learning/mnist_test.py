@@ -118,9 +118,7 @@ class TestConvoNetwork(unittest.TestCase):
             ConvoLayer(),
             FullyConnectedLayer(inp_size=16, out_size=out_size)
         ))
-        test_inputs_array = [np.random.normal(size=(inp_size, inp_size)) for i in range(10)]
-        test_outputs_array = [np.random.normal(size=(out_size, 1)) for i in range(10)]
-        for epoch in range(100):
+        for epoch in range(200):
             print 'epoc {}'.format(epoch)
             for inp, out in zip(inputs_array, outputs_array):
                 gradient_w_arrays, gradient_b_arrays = network.backprop(inp, out)

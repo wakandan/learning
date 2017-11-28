@@ -26,7 +26,7 @@ class Layer:
 class ConvoLayer(Layer):
     def __init__(self, filter_size=3, fn_activation=sigmoid, fn_derive=sigmoid_prime, stride=1, pool_size=2):
         self.filter_size = filter_size
-        self.weight_array = np.random.normal(size=(filter_size, filter_size)) / (filter_size * filter_size)
+        self.weight_array = np.random.normal(size=(filter_size, filter_size))
         # self.bias = np.random.normal()
         self.bias = 0
         self.fn_activation = fn_activation
@@ -182,8 +182,8 @@ class FullyConnectedLayer(Layer):
         self.out_size = out_size
         self.fn_activation = fn_activation
         self.fn_derive = fn_derive
-        self.weight_array = np.random.normal(size=(out_size, inp_size)) / (out_size * inp_size)
-        self.bias_array = np.random.normal(size=(out_size, 1)) / out_size
+        self.weight_array = np.random.normal(size=(out_size, inp_size))
+        self.bias_array = np.random.normal(size=(out_size, 1))
 
     def forward(self, inp):
         input_shape = inp.shape
@@ -200,7 +200,9 @@ class FullyConnectedLayer(Layer):
 
     def update(self, gradient_w_array, gradient_b_array, learning_rate):
         self.weight_array -= learning_rate * gradient_w_array.reshape(self.weight_array.shape)
+        # info('updated weight array {}', self.weight_array)
         self.bias_array -= learning_rate * gradient_b_array.reshape(self.bias_array.shape)
+        # info('updated bias array {}', self.bias_array)
 
     def backprop(self, inp, delta_array):
         if delta_array.shape[1] != 1:
@@ -278,6 +280,9 @@ class ConvoNetwork:
             gradient_b_arrays = [nb + dnb for nb, dnb in zip(gradient_b_arrays, gradient_b_list)]
             gradient_w_arrays = [nw + dnw for nw, dnw in zip(gradient_w_arrays, gradient_w_list)]
 
+        gradient_w_arrays = [w / len(mini_batch) for w in gradient_w_arrays]
+        gradient_b_arrays = [b / len(mini_batch) for b in gradient_b_arrays]
+
         for i, layer in enumerate(self.layers):
             layer.update(gradient_w_arrays[i], gradient_b_arrays[i], learning_rate)
 
@@ -301,10 +306,14 @@ class ConvoNetwork:
         network outputs the correct result. Note that the neural
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
-        # logger.info([(self.forward(x), y) for (x, y) in test_data])
-        test_results = [(np.argmax(self.forward(x)), y) for (x, y) in test_data]
-        # logger.info('test results %s' % str(test_results))
-        return sum(int(x == y) for (x, y) in test_results)
+        forward = [np.asarray(self.forward(x) - y) for (x, y) in test_data]
+        forward = [x.transpose().dot(x) for x in forward]
+        info('cost {}', sum(forward))
+        # info('final results {}', [(self.forward(x), y) for (x, y) in test_data])
+        # test_results = [(np.argmax(self.forward(x)), y) for (x, y) in test_data]
+        # info('test results {}', str(test_results))
+        # return sum(int(x == y) for (x, y) in test_results)
+
 
     def backprop(self, inp, out):
         layer_input_array = inp
@@ -349,8 +358,8 @@ def run_convo_network():
         ConvoLayer(),
         FullyConnectedLayer(inp_size=169, out_size=10),
     ))
-    network.sgd(training_data[:200], epochs=30, mini_batch_size=10, learning_rate=1.5e-5,
-                test_data=training_test_data[:200])
+    network.sgd(training_data[:300], epochs=30, mini_batch_size=10, learning_rate=1.5e-2,
+                test_data=training_data[:20])
     print(network.evaluate(test_data))
 
 
