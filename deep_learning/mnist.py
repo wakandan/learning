@@ -297,7 +297,8 @@ class ConvoNetwork:
                 self.update_mini_batch(mini_batch, learning_rate)
 
             if test_data:
-                print("Epoch {0}: {1}/{2}".format(j, self.evaluate(test_data), len(test_data)))
+                # print("Epoch {0}: {1}/{2}".format(j, self.evaluate(test_data), len(test_data)))
+                self.evaluate(test_data)
             else:
                 logger.info("Epoch {0} complete".format(j))
 
@@ -308,7 +309,9 @@ class ConvoNetwork:
         neuron in the final layer has the highest activation."""
         forward = [np.asarray(self.forward(x) - y) for (x, y) in test_data]
         forward = [x.transpose().dot(x) for x in forward]
-        info('cost {}', sum(forward))
+        cost = sum(forward)
+        info('cost {}', cost)
+        return cost
         # info('final results {}', [(self.forward(x), y) for (x, y) in test_data])
         # test_results = [(np.argmax(self.forward(x)), y) for (x, y) in test_data]
         # info('test results {}', str(test_results))
@@ -359,7 +362,7 @@ def run_convo_network():
         FullyConnectedLayer(inp_size=169, out_size=10),
     ))
     network.sgd(training_data[:300], epochs=30, mini_batch_size=10, learning_rate=1.5e-2,
-                test_data=training_data[:20])
+                test_data=training_data[:30])
     print(network.evaluate(test_data))
 
 
