@@ -69,8 +69,8 @@ class TestFullyConnected(unittest.TestCase):
         delta_array = np.random.normal(size=(5, 1))
         gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(inp_array, delta_array)
         self.assertEqual((10, 1), back_delta_array.shape)
-        self.assertEqual((10, 5), gradient_w_array.shape)
         self.assertEqual((5, 1), gradient_b_array.shape)
+        self.assertEqual((5, 10), gradient_w_array.shape)
 
 
 class TestConvoNetwork(unittest.TestCase):
@@ -94,7 +94,8 @@ class TestConvoNetwork(unittest.TestCase):
             FullyConnectedLayer(inp_size=inp_size, out_size=6),
             FullyConnectedLayer(inp_size=6, out_size=out_size)
         ))
-        backprop = network.backprop(inp, out)
+        gradient_w_arrays, gradient_b_arrays = network.backprop(inp, out)
+        network.update(gradient_w_arrays, gradient_b_arrays)
 
     def test_forward_2(self):
         size = 10
@@ -111,13 +112,39 @@ class TestConvoNetwork(unittest.TestCase):
     def test_backprop_2(self):
         inp_size = 10
         out_size = 3
-        inp_array = np.random.normal(size=(inp_size, inp_size))
+        inputs_array = [np.random.normal(size=(inp_size, inp_size)) for i in range(100)]
+        outputs_array = [np.random.normal(size=(out_size, 1)) for i in range(100)]
         network = ConvoNetwork(layers=(
             ConvoLayer(),
             FullyConnectedLayer(inp_size=16, out_size=out_size)
         ))
-        out_array = np.random.normal(size=(out_size, 1))
-        network.backprop(inp_array, out_array)
+        test_inputs_array = [np.random.normal(size=(inp_size, inp_size)) for i in range(10)]
+        test_outputs_array = [np.random.normal(size=(out_size, 1)) for i in range(10)]
+        for epoch in range(100):
+            print 'epoc {}'.format(epoch)
+            for inp, out in zip(inputs_array, outputs_array):
+                gradient_w_arrays, gradient_b_arrays = network.backprop(inp, out)
+                for i, layer in enumerate(network.layers):
+                    network.layers[i].update(gradient_w_arrays[i], gradient_b_arrays[i], 0.0015)
+                    if i == 1:
+                        # print('network layer {}'.format(i))
+                        # print network.layers[i].weight_array
+                        # print network.layers[i].bias_array
+                        pass
+            for i, layer in enumerate(network.layers):
+                if i == 1:
+                    # print('network layer {}'.format(i))
+                    # print 'weight array', network.layers[i].weight_array
+                    # print 'bias array', network.layers[i].bias_array
+                    pass
+            all_cost = np.zeros((3, 1))
+            for inp, out in zip(inputs_array, outputs_array):
+                # forward_result = network.forward(inp)
+                # print 'network forward result', forward_result
+                cost = (network.forward(inp) - out) ** 2
+                all_cost += cost
+            print 'all cost'
+            print all_cost
 
     def test_forward_3(self):
         network = ConvoNetwork(layers=(
