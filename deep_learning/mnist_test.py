@@ -2,8 +2,10 @@ import unittest
 
 import numpy as np
 
+from cost import CrossEntropyCost
 from mnist import ConvoLayer, FullyConnectedLayer
 from mnist import ConvoNetwork
+from cost import QuadraticCost
 
 
 class TestConvLayer(unittest.TestCase):
@@ -71,6 +73,29 @@ class TestFullyConnected(unittest.TestCase):
         self.assertEqual((10, 1), back_delta_array.shape)
         self.assertEqual((5, 1), gradient_b_array.shape)
         self.assertEqual((5, 10), gradient_w_array.shape)
+
+    def test_backprop_with_epoch(self):
+        input_size = 100
+        layer = FullyConnectedLayer(10, 5)
+        vector = np.random.normal(size=(5, 10))
+        inp_array = [np.random.normal(size=(10, 1)) for i in range(input_size)]
+        out_array = [np.dot(vector, i) for i in inp_array]
+        for epoch in range(10000):
+            activation_array = [layer.forward(inp) for inp in inp_array]
+            weighted_array = np.asarray([i[1] for i in activation_array])
+            activations = np.asarray([i[0] for i in activation_array])
+            cost_array = [x - y for x, y in zip(activations, out_array)]
+            cost = sum([a.transpose().dot(a) for a in cost_array]) / (2 * input_size)
+            delta_array = CrossEntropyCost.delta(weighted_array, activations, out_array) / input_size
+            backprop = [layer.backprop(inp, delta_array) for inp, delta_array in zip(inp_array, delta_array)]
+            gradient_w_array = sum([i[0] for i in backprop]) / input_size
+            gradient_b_array = sum([i[1] for i in backprop]) / input_size
+            layer.update(gradient_w_array, gradient_b_array, 15)
+            print('epoch #{}, cost {}'.format(epoch, cost))
+            # gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(inp_array, delta_array)
+            # self.assertEqual((10, 1), back_delta_array.shape)
+            # self.assertEqual((5, 1), gradient_b_array.shape)
+            # self.assertEqual((5, 10), gradient_w_array.shape)
 
 
 class TestConvoNetwork(unittest.TestCase):
