@@ -16,7 +16,7 @@ class Layer:
     def forward(self, inp_array):
         raise NotImplementedError("forward of abstract class not implemented")
 
-    def backprop(self, inp_array, delta_array):
+    def backprop(self, weighted_output_array, activation_array, delta_array):
         raise NotImplementedError('backprop of abstract class not implemented')
 
     def update(self, gradient_w_array, gradient_b_array, learning_rate):
@@ -42,7 +42,6 @@ class ConvoLayer(Layer):
         """
         trace('input array shape %s', inp.shape.__str__())
         input_size = int(np.sqrt(inp.size))
-        # print('input_size', input_size)
         inp_array = inp.reshape(input_size, input_size)
         output_size = input_size - self.filter_size + 1
         output = np.zeros([output_size, output_size])
@@ -184,8 +183,10 @@ class FullyConnectedLayer(Layer):
         self.fn_activation = fn_activation
         self.fn_derive = fn_derive
         self.weight_array = np.random.normal(size=(out_size, inp_size))
+        self.weight_array /= np.max(self.weight_array)
         # self.weight_array = np.zeros((out_size, inp_size))
         self.bias_array = np.random.normal(size=(out_size, 1))
+        self.bias_array /= np.max(self.bias_array)
 
     def forward(self, inp):
         input_shape = inp.shape
@@ -206,20 +207,21 @@ class FullyConnectedLayer(Layer):
         self.bias_array -= learning_rate * gradient_b_array.reshape(self.bias_array.shape)
         # info('updated bias array {}', self.bias_array)
 
-    def backprop(self, inp, delta_array):
+    def backprop(self, weighted_input, activation, delta_array):
         if delta_array.shape[1] != 1:
             logger.debug('delta array is not a column array, reshape')
             delta_array = delta_array.reshape(np.size(delta_array), 1)
         logger.debug('weight array shape %s' % self.weight_array.shape.__str__())
         logger.debug('delta array shape %s' % delta_array.shape.__str__())
-        logger.debug('input array shape %s', inp.shape.__str__())
+        logger.debug('input array shape %s', activation.shape.__str__())
         assert delta_array.shape == (self.out_size, 1), \
             'delta array should have correct out size (%s, 1) observed=%s' % (self.out_size, delta_array.shape)
 
-        back_delta_array = np.multiply(np.dot(self.weight_array.transpose(), delta_array),
-                                       self.fn_derive(inp).reshape(self.inp_size, 1))
+        back_delta_array = np.multiply(
+            np.dot(self.weight_array.transpose(), delta_array),
+            self.fn_derive(weighted_input).reshape(self.inp_size, 1))
         gradient_b = delta_array
-        gradient_w = np.dot(delta_array, inp.reshape(1, self.inp_size))
+        gradient_w = np.dot(delta_array, activation.reshape(1, self.inp_size))
         return gradient_w, gradient_b, back_delta_array
 
 
@@ -228,6 +230,7 @@ class ConvoNetwork:
         self.layers = layers
         self.monitor_accuracy = monitor_accuracy
         self.cost = cost
+        self.learning_rate = 0
 
     def forward(self, inp):
         layer_input_array = inp
@@ -312,7 +315,7 @@ class ConvoNetwork:
         neuron in the final layer has the highest activation."""
         forward = [np.asarray(CrossEntropyCost.fn(self.forward(x), y)) for (x, y) in test_data]
         forward = [x.transpose().dot(x) for x in forward]
-        cost = sum(forward)/len(test_data)
+        cost = sum(forward) / len(test_data)
         # info('cost {}', cost)
         # info('final results {}', [(self.forward(x), y) for (x, y) in test_data])
         test_results = [(np.argmax(self.forward(x)), np.argmax(y)) for (x, y) in test_data]
@@ -322,11 +325,13 @@ class ConvoNetwork:
 
     def backprop(self, inp, out, batch_size):
         layer_input_array = inp
-        layer_input_arrays = []
+        layer_activation_arrays = []
         weighted_input_array = []
+        layer_weighted_output_array = [inp]
         for i, layer in enumerate(self.layers):
-            layer_input_arrays.append(layer_input_array)
-            _, layer_input_array = layer.forward(layer_input_array)
+            layer_activation_arrays.append(layer_input_array)
+            weighted_output, layer_input_array = layer.forward(layer_input_array)
+            layer_weighted_output_array.append(weighted_output)
             # logger.debug('activation shape at layer %d = %s' % (i, weighted_input_array.shape))
             # layer_input_array = layer.fn_activation(weighted_input_array)
         # final activation
@@ -342,8 +347,9 @@ class ConvoNetwork:
             layer_index = len(self.layers) - i - 1
             logger.debug('backprop on layer index %s' % layer_index)
             layer = self.layers[layer_index]
-            layer_input = layer_input_arrays[layer_index]
-            gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(layer_input, delta_array)
+            layer_activation = layer_activation_arrays[layer_index]
+            weighted_input = layer_weighted_output_array[layer_index]
+            gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(weighted_input, layer_activation, delta_array)
             gradient_w_arrays = [gradient_w_array] + gradient_w_arrays
             gradient_b_arrays = [gradient_b_array] + gradient_b_arrays
             # layer.update(gradient_w_array, gradient_b_array, self.learning_rate)
@@ -361,13 +367,13 @@ def run_convo_network():
 
     network = ConvoNetwork(layers=(
         # ConvoLayer(),
-        FullyConnectedLayer(inp_size=28 * 28, out_size=64),
-        FullyConnectedLayer(inp_size=64, out_size=64),
-        FullyConnectedLayer(inp_size=64, out_size=10),
+        FullyConnectedLayer(inp_size=28 * 28, out_size=30),
+        FullyConnectedLayer(inp_size=30, out_size=10),
+        # FullyConnectedLayer(inp_size=30, out_size=10),
         # FullyConnectedLayer(inp_size=30, out_size=10),
     ))
-    network.sgd(training_data, epochs=50000, mini_batch_size=10, learning_rate=2.5e-2,
-                test_data=test_data)
+    network.sgd(training_data[:10000], epochs=50000, mini_batch_size=50, learning_rate=1e-3,
+                test_data=training_data[10000:10030])
 
 
 if __name__ == '__main__':
