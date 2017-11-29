@@ -11,7 +11,7 @@ TRACE_LEVEL = 5
 
 
 def debug(*args, **kwargs):
-    logger.debug(args[0].format(map(str, *args[1:])))
+    logger.debug(args[0].format(args[1:]))
 
 
 def trace(*args, **kwargs):

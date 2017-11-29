@@ -214,6 +214,7 @@ class FullyConnectedLayer(Layer):
         logger.debug('weight array shape %s' % self.weight_array.shape.__str__())
         logger.debug('delta array shape %s' % delta_array.shape.__str__())
         logger.debug('input array shape %s', activation.shape.__str__())
+        debug('weighted input shape {}', weighted_input.shape)
         assert delta_array.shape == (self.out_size, 1), \
             'delta array should have correct out size (%s, 1) observed=%s' % (self.out_size, delta_array.shape)
 
@@ -271,7 +272,7 @@ class ConvoNetwork:
                 gradient_b_arrays.append(0)
 
         for x, y in mini_batch:
-            gradient_w_list, gradient_b_list = self.backprop(x, y, len(mini_batch))
+            gradient_w_list, gradient_b_list = self.backprop(x, y)
             for i in range(len(self.layers)):
                 logger.debug('weight array of layer %s, %s' % (i, str(gradient_w_arrays[i].shape)))
                 logger.debug('gradient weight array of layer %s, %s' % (i, str(gradient_w_list[i].shape)))
@@ -294,6 +295,8 @@ class ConvoNetwork:
     def sgd(self, training_data, epochs, mini_batch_size, learning_rate, test_data=None):
         n = len(training_data)
         for j in range(epochs):
+            if j % 20 == 0:
+                learning_rate *= 0.99
             # logger.info('running epoch {0}'.format(j))
             random.shuffle(training_data)
             mini_batches = [training_data[k:k + mini_batch_size] for k in range(0, n, mini_batch_size)]
@@ -323,7 +326,7 @@ class ConvoNetwork:
         return cost
         # return sum(int(x == y) for (x, y) in test_results)
 
-    def backprop(self, inp, out, batch_size):
+    def backprop(self, inp, out):
         layer_input_array = inp
         layer_activation_arrays = []
         weighted_input_array = []
@@ -346,9 +349,11 @@ class ConvoNetwork:
         for i in range(len(self.layers)):
             layer_index = len(self.layers) - i - 1
             logger.debug('backprop on layer index %s' % layer_index)
+            debug('layer index {}', layer_index)
             layer = self.layers[layer_index]
             layer_activation = layer_activation_arrays[layer_index]
             weighted_input = layer_weighted_output_array[layer_index]
+            debug('weighted input shape {}', weighted_input.shape)
             gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(weighted_input, layer_activation, delta_array)
             gradient_w_arrays = [gradient_w_array] + gradient_w_arrays
             gradient_b_arrays = [gradient_b_array] + gradient_b_arrays
@@ -367,13 +372,14 @@ def run_convo_network():
 
     network = ConvoNetwork(layers=(
         # ConvoLayer(),
-        FullyConnectedLayer(inp_size=28 * 28, out_size=30),
-        FullyConnectedLayer(inp_size=30, out_size=10),
+        FullyConnectedLayer(inp_size=28 * 28, out_size=32),
+        # FullyConnectedLayer(inp_size=64, out_size=64),
+        FullyConnectedLayer(inp_size=32, out_size=10),
         # FullyConnectedLayer(inp_size=30, out_size=10),
-        # FullyConnectedLayer(inp_size=30, out_size=10),
+        # FullyConnectedLayer(inp_size=13*13, out_size=10),
     ))
-    network.sgd(training_data[:10000], epochs=50000, mini_batch_size=50, learning_rate=1e-3,
-                test_data=training_data[10000:10030])
+    network.sgd(training_data, epochs=50000, mini_batch_size=50, learning_rate=1e-1,
+                test_data=training_data[10000:10100])
 
 
 if __name__ == '__main__':
