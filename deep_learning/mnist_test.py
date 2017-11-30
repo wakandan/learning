@@ -4,7 +4,7 @@ import numpy as np
 
 from cost import CrossEntropyCost
 from mnist import ConvoLayer, FullyConnectedLayer
-from mnist import ConvoNetwork
+from mnist import NNNetwork
 from cost import QuadraticCost
 
 
@@ -102,7 +102,7 @@ class TestConvoNetwork(unittest.TestCase):
     def test_forward_1(self):
         size = 4
         inp = np.random.normal(size=(size, 1))
-        network = ConvoNetwork(layers=(
+        network = NNNetwork(layers=(
             FullyConnectedLayer(inp_size=size, out_size=6),
             FullyConnectedLayer(inp_size=6, out_size=3)
         ))
@@ -115,7 +115,7 @@ class TestConvoNetwork(unittest.TestCase):
         out_size = 3
         inp = np.random.normal(size=(inp_size, 1))
         out = np.random.normal(size=(out_size, 1))
-        network = ConvoNetwork(layers=(
+        network = NNNetwork(layers=(
             FullyConnectedLayer(inp_size=inp_size, out_size=6),
             FullyConnectedLayer(inp_size=6, out_size=out_size)
         ))
@@ -125,7 +125,7 @@ class TestConvoNetwork(unittest.TestCase):
     def test_forward_2(self):
         size = 10
         inp = np.random.normal(size=(size, size))
-        network = ConvoNetwork(layers=(
+        network = NNNetwork(layers=(
             ConvoLayer(),
             FullyConnectedLayer(inp_size=16, out_size=3)
         ))
@@ -139,7 +139,7 @@ class TestConvoNetwork(unittest.TestCase):
         out_size = 3
         inputs_array = [np.random.normal(size=(inp_size, inp_size)) for i in range(100)]
         outputs_array = [np.random.normal(size=(out_size, 1)) for i in range(100)]
-        network = ConvoNetwork(layers=(
+        network = NNNetwork(layers=(
             ConvoLayer(),
             FullyConnectedLayer(inp_size=16, out_size=out_size)
         ))
@@ -170,7 +170,7 @@ class TestConvoNetwork(unittest.TestCase):
             print all_cost
 
     def test_forward_3(self):
-        network = ConvoNetwork(layers=(
+        network = NNNetwork(layers=(
             FullyConnectedLayer(inp_size=5, out_size=100),
             ConvoLayer()
         ))
@@ -182,7 +182,7 @@ class TestConvoNetwork(unittest.TestCase):
         self.assertEqual((4, 4), activation.shape)
 
     def test_backprop_3(self):
-        network = ConvoNetwork(layers=(
+        network = NNNetwork(layers=(
             FullyConnectedLayer(inp_size=5, out_size=100),
             ConvoLayer()
         ))
@@ -193,7 +193,7 @@ class TestConvoNetwork(unittest.TestCase):
         network.backprop(inp_array, out_array)
 
     def test_forward_4(self):
-        network = ConvoNetwork(layers=(
+        network = NNNetwork(layers=(
             ConvoLayer(),
             ConvoLayer()
         ))
@@ -204,7 +204,7 @@ class TestConvoNetwork(unittest.TestCase):
         self.assertEqual((1, 1), activation.shape)
 
     def test_backprop_4(self):
-        network = ConvoNetwork(layers=(
+        network = NNNetwork(layers=(
             ConvoLayer(),
             ConvoLayer()
         ))

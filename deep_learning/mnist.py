@@ -207,26 +207,26 @@ class FullyConnectedLayer(Layer):
         self.bias_array -= learning_rate * gradient_b_array.reshape(self.bias_array.shape)
         # info('updated bias array {}', self.bias_array)
 
-    def backprop(self, weighted_input, activation, delta_array):
+    def backprop(self, z, a, delta_array):
         if delta_array.shape[1] != 1:
             logger.debug('delta array is not a column array, reshape')
             delta_array = delta_array.reshape(np.size(delta_array), 1)
         logger.debug('weight array shape %s' % self.weight_array.shape.__str__())
         logger.debug('delta array shape %s' % delta_array.shape.__str__())
-        logger.debug('input array shape %s', activation.shape.__str__())
-        debug('weighted input shape {}', weighted_input.shape)
+        logger.debug('input array shape %s', a.shape.__str__())
+        debug('weighted input shape {}', z.shape)
         assert delta_array.shape == (self.out_size, 1), \
             'delta array should have correct out size (%s, 1) observed=%s' % (self.out_size, delta_array.shape)
 
         back_delta_array = np.multiply(
             np.dot(self.weight_array.transpose(), delta_array),
-            self.fn_derive(weighted_input).reshape(self.inp_size, 1))
+            self.fn_derive(z).reshape(self.inp_size, 1))
         gradient_b = delta_array
-        gradient_w = np.dot(delta_array, activation.reshape(1, self.inp_size))
+        gradient_w = np.dot(delta_array, a.reshape(1, self.inp_size))
         return gradient_w, gradient_b, back_delta_array
 
 
-class ConvoNetwork:
+class NNNetwork:
     def __init__(self, layers, monitor_accuracy=True, cost=CrossEntropyCost):
         self.layers = layers
         self.monitor_accuracy = monitor_accuracy
@@ -295,6 +295,7 @@ class ConvoNetwork:
     def sgd(self, training_data, epochs, mini_batch_size, learning_rate, test_data=None):
         n = len(training_data)
         for j in range(epochs):
+            # do momentun for learning rate
             if j % 20 == 0:
                 learning_rate *= 0.99
             # logger.info('running epoch {0}'.format(j))
@@ -326,23 +327,20 @@ class ConvoNetwork:
         return cost
         # return sum(int(x == y) for (x, y) in test_results)
 
-    def backprop(self, inp, out):
-        layer_input_array = inp
-        layer_activation_arrays = []
-        weighted_input_array = []
-        layer_weighted_output_array = [inp]
+    def backprop(self, x, y):
+        a = x
+        a_s = []
+        z_s = [x] # array to store z_s
         for i, layer in enumerate(self.layers):
-            layer_activation_arrays.append(layer_input_array)
-            weighted_output, layer_input_array = layer.forward(layer_input_array)
-            layer_weighted_output_array.append(weighted_output)
+            a_s.append(a)
+            z, a = layer.forward(a)
+            z_s.append(z)
             # logger.debug('activation shape at layer %d = %s' % (i, weighted_input_array.shape))
-            # layer_input_array = layer.fn_activation(weighted_input_array)
-        # final activation
-        activation_array = layer_input_array
-        logger.debug('output shape %s' % out.shape.__str__())
-        logger.debug('activation array shape %s' % activation_array.shape.__str__())
-        assert out.shape == activation_array.shape, 'activation array and output should have the same size'
-        delta_array = self.cost.delta(weighted_input_array, activation_array, out)
+            # a = layer.fn_activation(weighted_input_array)
+        logger.debug('output shape %s' % y.shape.__str__())
+        logger.debug('activation array shape %s' % a.shape.__str__())
+        assert y.shape == a.shape, 'activation array and output should have the same size'
+        delta_array = self.cost.delta(z_s[-1], a, y)
         # gradient w and b for each layers
         gradient_w_arrays = []
         gradient_b_arrays = []
@@ -351,10 +349,10 @@ class ConvoNetwork:
             logger.debug('backprop on layer index %s' % layer_index)
             debug('layer index {}', layer_index)
             layer = self.layers[layer_index]
-            layer_activation = layer_activation_arrays[layer_index]
-            weighted_input = layer_weighted_output_array[layer_index]
-            debug('weighted input shape {}', weighted_input.shape)
-            gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(weighted_input, layer_activation, delta_array)
+            a = a_s[layer_index]
+            z = z_s[layer_index]
+            debug('weighted input shape {}', z.shape)
+            gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(z, a, delta_array)
             gradient_w_arrays = [gradient_w_array] + gradient_w_arrays
             gradient_b_arrays = [gradient_b_array] + gradient_b_arrays
             # layer.update(gradient_w_array, gradient_b_array, self.learning_rate)
@@ -370,7 +368,7 @@ def run_convo_network():
     training_data, validation_data, test_data, training_test_data = mnist_loader.load_data_wrapper()
     print('loaded data', len(training_data))
 
-    network = ConvoNetwork(layers=(
+    network = NNNetwork(layers=(
         # ConvoLayer(),
         FullyConnectedLayer(inp_size=28 * 28, out_size=32),
         # FullyConnectedLayer(inp_size=64, out_size=64),
