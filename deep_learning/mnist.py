@@ -314,12 +314,11 @@ class NNNetwork:
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
         forward = [np.asarray(CrossEntropyCost.fn(self.forward(x), y)) for (x, y) in test_data]
-        forward = [x.transpose().dot(x) for x in forward]
         cost = sum(forward) / len(test_data)
         # info('cost {}', cost)
         # info('final results {}', [(self.forward(x), y) for (x, y) in test_data])
         test_results = [(np.argmax(self.forward(x)), np.argmax(y)) for (x, y) in test_data]
-        info('test results {}/{}'.format(sum(int(x == y) for (x, y) in test_results), len(test_data)))
+        info('test results {}'.format(sum(int(x == y) for (x, y) in test_results)*100.0/len(test_data)))
         return cost
         # return sum(int(x == y) for (x, y) in test_results)
 
@@ -351,7 +350,6 @@ class NNNetwork:
             gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(z, a, delta_array)
             gradient_w_arrays = [gradient_w_array] + gradient_w_arrays
             gradient_b_arrays = [gradient_b_array] + gradient_b_arrays
-            # layer.update(gradient_w_array, gradient_b_array, self.learning_rate)
             delta_array = back_delta_array
         return gradient_w_arrays, gradient_b_arrays
 
@@ -372,8 +370,8 @@ def run_convo_network():
         # FullyConnectedLayer(inp_size=30, out_size=10),
         # FullyConnectedLayer(inp_size=13*13, out_size=10),
     ))
-    network.sgd(training_data[:1000], epochs=10, mini_batch_size=10, learning_rate=3,
-                test_data=training_data[10000:10100])
+    network.sgd(training_data, epochs=50, mini_batch_size=10, learning_rate=3,
+                test_data=training_data)
 
 
 if __name__ == '__main__':
