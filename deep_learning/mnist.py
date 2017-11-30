@@ -183,10 +183,7 @@ class FullyConnectedLayer(Layer):
         self.fn_activation = fn_activation
         self.fn_derive = fn_derive
         self.weight_array = np.random.normal(size=(out_size, inp_size))
-        self.weight_array /= np.max(self.weight_array)
-        # self.weight_array = np.zeros((out_size, inp_size))
         self.bias_array = np.random.normal(size=(out_size, 1))
-        self.bias_array /= np.max(self.bias_array)
 
     def forward(self, inp):
         input_shape = inp.shape
@@ -202,9 +199,9 @@ class FullyConnectedLayer(Layer):
         return z, a
 
     def update(self, gradient_w_array, gradient_b_array, learning_rate):
-        self.weight_array -= learning_rate * gradient_w_array.reshape(self.weight_array.shape)
+        self.weight_array -= learning_rate * gradient_w_array
         # info('updated weight array {}', self.weight_array)
-        self.bias_array -= learning_rate * gradient_b_array.reshape(self.bias_array.shape)
+        self.bias_array -= learning_rate * gradient_b_array
         # info('updated bias array {}', self.bias_array)
 
     def backprop(self, z, a, delta_array):
@@ -236,9 +233,8 @@ class NNNetwork:
     def forward(self, inp):
         layer_input_array = inp
         for layer in self.layers:
-            _, weighted_input_array = layer.forward(layer_input_array)
-            trace('weighted output {}', weighted_input_array)
-            layer_input_array = layer.fn_activation(weighted_input_array)
+            _, layer_input_array = layer.forward(layer_input_array)
+
         return layer_input_array
 
     def output_shape(self, inp):
@@ -376,7 +372,7 @@ def run_convo_network():
         # FullyConnectedLayer(inp_size=30, out_size=10),
         # FullyConnectedLayer(inp_size=13*13, out_size=10),
     ))
-    network.sgd(training_data, epochs=50000, mini_batch_size=50, learning_rate=1e-1,
+    network.sgd(training_data[:1000], epochs=10, mini_batch_size=10, learning_rate=3,
                 test_data=training_data[10000:10100])
 
 
