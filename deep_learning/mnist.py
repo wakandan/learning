@@ -1,5 +1,7 @@
 import random
 
+import operator
+
 import mnist_loader
 import numpy as np
 import logging
@@ -186,14 +188,7 @@ class FullyConnectedLayer(Layer):
         self.bias_array = np.random.normal(size=(out_size, 1))
 
     def forward(self, inp):
-        input_shape = inp.shape
-        inp_size = input_shape[0] * input_shape[1]
-        inp_array = inp.reshape(inp_size, 1)
-        logger.debug('input size %s' % str(self.inp_size))
-        assert inp_array.shape == (self.inp_size, 1), "inp.shape %s != (inp_size, 1) (%s, 1)" \
-                                                      % (inp_array.shape, self.inp_size)
-
-        z = np.dot(self.weight_array, inp_array) + self.bias_array
+        z = np.dot(self.weight_array, inp) + self.bias_array
         logger.debug('weighted input shape %s' % str(z.shape))
         a = self.fn_activation(z)
         return z, a
@@ -204,22 +199,17 @@ class FullyConnectedLayer(Layer):
         self.bias_array -= learning_rate * gradient_b_array
         # info('updated bias array {}', self.bias_array)
 
-    def backprop(self, z, a, delta_array):
-        if delta_array.shape[1] != 1:
-            logger.debug('delta array is not a column array, reshape')
-            delta_array = delta_array.reshape(np.size(delta_array), 1)
-        logger.debug('weight array shape %s' % self.weight_array.shape.__str__())
-        logger.debug('delta array shape %s' % delta_array.shape.__str__())
-        logger.debug('input array shape %s', a.shape.__str__())
-        debug('weighted input shape {}', z.shape)
-        assert delta_array.shape == (self.out_size, 1), \
-            'delta array should have correct out size (%s, 1) observed=%s' % (self.out_size, delta_array.shape)
-
-        back_delta_array = np.multiply(
-            np.dot(self.weight_array.transpose(), delta_array),
-            self.fn_derive(z).reshape(self.inp_size, 1))
+    def backprop(self, z, a, delta_array, layer_index):
+        logger.debug('delta array dimension {}'.format(delta_array.shape))
+        back_delta_array = None
+        # no point backprop further if current layer is the first one
+        if layer_index > 0:
+            back_delta_array = np.multiply(
+                np.dot(self.weight_array.transpose(), delta_array),
+                self.fn_derive(z))
+            logger.debug('back delta array dimension {}'.format(back_delta_array.shape))
         gradient_b = delta_array
-        gradient_w = np.dot(delta_array, a.reshape(1, self.inp_size))
+        gradient_w = np.dot(delta_array, a.transpose())
         return gradient_w, gradient_b, back_delta_array
 
 
@@ -258,7 +248,7 @@ class NNNetwork:
 
             input_shape = output_shape
 
-    def update_mini_batch(self, mini_batch, learning_rate):
+    def update_mini_batch(self, inp, out, learning_rate):
         gradient_w_arrays = [np.zeros(layer.weight_array.shape) for layer in self.layers]
         gradient_b_arrays = []
         for layer in self.layers:
@@ -267,25 +257,15 @@ class NNNetwork:
             else:
                 gradient_b_arrays.append(0)
 
-        for x, y in mini_batch:
-            gradient_w_list, gradient_b_list = self.backprop(x, y)
-            for i in range(len(self.layers)):
-                logger.debug('weight array of layer %s, %s' % (i, str(gradient_w_arrays[i].shape)))
-                logger.debug('gradient weight array of layer %s, %s' % (i, str(gradient_w_list[i].shape)))
-                try:
-                    logger.debug('bias array of layer %s, %s' % (i, str(gradient_b_arrays[i].shape)))
-                    logger.debug('gradient bias array of layer %s, %s' % (i, str(gradient_b_list[i].shape)))
-                except:
-                    logger.debug('bias array of layer %s, %s' % (i, str(gradient_b_arrays[i])))
-                    logger.debug('gradient bias array of layer %s, %s' % (i, str(gradient_b_list[i])))
-            # sum all delta weights and delta biases for each training example
-            gradient_b_arrays = [nb + dnb for nb, dnb in zip(gradient_b_arrays, gradient_b_list)]
-            gradient_w_arrays = [nw + dnw for nw, dnw in zip(gradient_w_arrays, gradient_w_list)]
-
-        gradient_w_arrays = [w / len(mini_batch) for w in gradient_w_arrays]
-        gradient_b_arrays = [b / len(mini_batch) for b in gradient_b_arrays]
+        gradient_w_list, gradient_b_list = self.backprop(inp, out)
+        gradient_w_arrays = [i / len(inp) for i in gradient_w_list]
+        gradient_b_arrays = [np.sum(i, axis=1, keepdims=True) / len(inp) for i in gradient_b_list]
 
         for i, layer in enumerate(self.layers):
+            logger.debug('updating layer {}, weight shape = {}, bias shape = {}'.format(i, layer.weight_array.shape,
+                                                                                        layer.bias_array.shape))
+            logger.debug('layer update param: weight shape = {}, bias_shape = {}'.format(gradient_w_arrays[i].shape,
+                                                                                         gradient_b_arrays[i].shape))
             layer.update(gradient_w_arrays[i], gradient_b_arrays[i], learning_rate)
 
     def sgd(self, training_data, epochs, mini_batch_size, learning_rate, test_data=None):
@@ -298,8 +278,10 @@ class NNNetwork:
             random.shuffle(training_data)
             mini_batches = [training_data[k:k + mini_batch_size] for k in range(0, n, mini_batch_size)]
             for i, mini_batch in enumerate(mini_batches):
+                inp = np.squeeze(np.asarray([i[0] for i in mini_batch])).transpose()
+                out = np.squeeze(np.asarray([i[1] for i in mini_batch])).transpose()
                 # logger.info('running on mini batch #{0}'.format(i))
-                self.update_mini_batch(mini_batch, learning_rate)
+                self.update_mini_batch(inp, out, learning_rate)
 
             if test_data:
                 # print("Epoch {0}: {1}/{2}".format(j, self.evaluate(test_data), len(test_data)))
@@ -318,14 +300,14 @@ class NNNetwork:
         # info('cost {}', cost)
         # info('final results {}', [(self.forward(x), y) for (x, y) in test_data])
         test_results = [(np.argmax(self.forward(x)), np.argmax(y)) for (x, y) in test_data]
-        info('test results {}'.format(sum(int(x == y) for (x, y) in test_results)*100.0/len(test_data)))
+        info('test results {}'.format(sum(int(x == y) for (x, y) in test_results) * 100.0 / len(test_data)))
         return cost
         # return sum(int(x == y) for (x, y) in test_results)
 
     def backprop(self, x, y):
         a = x
         a_s = []
-        z_s = [x] # array to store z_s
+        z_s = [x]  # array to store z_s
         for i, layer in enumerate(self.layers):
             a_s.append(a)
             z, a = layer.forward(a)
@@ -347,7 +329,7 @@ class NNNetwork:
             a = a_s[layer_index]
             z = z_s[layer_index]
             debug('weighted input shape {}', z.shape)
-            gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(z, a, delta_array)
+            gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(z, a, delta_array, layer_index)
             gradient_w_arrays = [gradient_w_array] + gradient_w_arrays
             gradient_b_arrays = [gradient_b_array] + gradient_b_arrays
             delta_array = back_delta_array
@@ -364,13 +346,13 @@ def run_convo_network():
 
     network = NNNetwork(layers=(
         # ConvoLayer(),
-        FullyConnectedLayer(inp_size=28 * 28, out_size=32),
+        FullyConnectedLayer(inp_size=28 * 28, out_size=100),
         # FullyConnectedLayer(inp_size=64, out_size=64),
-        FullyConnectedLayer(inp_size=32, out_size=10),
+        FullyConnectedLayer(inp_size=100, out_size=10),
         # FullyConnectedLayer(inp_size=30, out_size=10),
         # FullyConnectedLayer(inp_size=13*13, out_size=10),
     ))
-    network.sgd(training_data, epochs=50, mini_batch_size=10, learning_rate=3,
+    network.sgd(training_data, epochs=50, mini_batch_size=20, learning_rate=3,
                 test_data=training_data)
 
 
