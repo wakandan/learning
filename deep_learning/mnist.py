@@ -16,7 +16,7 @@ class Layer:
     def layer_forward(self, inp_array):
         raise NotImplementedError("forward of abstract class not implemented")
 
-    def layer_backprop(self, weighted_output_array, activation_array, delta_array):
+    def layer_backprop(self, weighted_output_array, activation_array, delta_array, layer_index):
         raise NotImplementedError('backprop of abstract class not implemented')
 
     def update(self, gradient_w_array, gradient_b_array, learning_rate):
@@ -26,10 +26,10 @@ class Layer:
 class ConvoLayer(Layer):
     def __init__(self, filter_size=3, fn_activation=sigmoid, fn_derive=sigmoid_prime, stride=1, pool_size=2):
         self.filter_size = filter_size
-        # self.weight_array = np.random.normal(size=(filter_size, filter_size))
-        self.weight_array = np.zeros((filter_size, filter_size))
-        # self.bias = np.random.normal()
-        self.bias = 0
+        self.weight_array = np.random.normal(size=(filter_size, filter_size))
+        # self.weight_array = np.zeros((filter_size, filter_size))
+        self.bias = np.random.normal()
+        # self.bias = 0
         self.fn_activation = fn_activation
         self.fn_derive = fn_derive
         self.stride = stride
@@ -44,16 +44,16 @@ class ConvoLayer(Layer):
         input_size = int(np.sqrt(inp.size))
         inp_array = inp.reshape(input_size, input_size)
         output_size = input_size - self.filter_size + 1
-        output = np.zeros([output_size, output_size])
+        z = np.zeros([output_size, output_size])
         weight_len = self.filter_size * self.filter_size
         weight = self.weight_array.reshape([1, weight_len])
         for i in range(0, output_size, self.stride):
             for j in range(0, output_size, self.stride):
-                output[i][j] = np.dot(weight,
-                                      inp_array[i:i + self.filter_size][:, j:j + self.filter_size].reshape(
-                                          [weight_len, 1])) + \
-                               self.bias
-        return output, self.fn_activation(output)
+                z[i][j] = np.dot(weight,
+                                 inp_array[i:i + self.filter_size][:, j:j + self.filter_size].reshape(
+                                     [weight_len, 1])) + \
+                          self.bias
+        return z, self.fn_activation(z)
 
     @staticmethod
     def max_pool_helper(inp, pool_size):
@@ -69,15 +69,16 @@ class ConvoLayer(Layer):
         return ConvoLayer.max_pool_helper(inp, self.pool_size)
 
     def layer_forward(self, inp):
-        weighted_output, output = self.forward_helper(inp)
-        return weighted_output, self.max_pooling(output)
+        z, a = self.forward_helper(inp)
+        self.z = z
+        self.a = a
+        return z, self.max_pooling(a)
 
     def get_max_position(self, activation_array):
         array_size = activation_array.shape[0]
         if array_size % self.pool_size != 0:
             raise NotImplementedError("Array size needs to be even")
 
-        output_size = array_size / 2
         # initialize a dummy array of max position
         max_position_list = []
         for i in range(array_size):
@@ -104,14 +105,7 @@ class ConvoLayer(Layer):
         # self.bias -= learning_rate * gradient_b
         # info('updated bias {}', self.bias)
 
-    def layer_backprop(self, z, inp, delta_array):
-        """
-        delta_array is a (input_array_size - filter_size + 1)^2/4 x 1. It should be the result of reshaping the max-pooled
-        output matrix
-        :return:
-        delta_array_last: a input_array_size x input_array_size
-        """
-        # if column array, then reshape
+    def reshape_to_square_matrix(self, inp):
         logger.debug('input array shape %s' % inp.shape.__str__())
         input_array = inp
         if inp.shape[1] == 1:
@@ -120,62 +114,58 @@ class ConvoLayer(Layer):
             if input_size ** 2 != inp.shape[0]:
                 raise NotImplementedError('input array can not be reshaped to square matrix')
             input_array = inp.reshape(input_size, input_size)
-        logger.debug('delta array shape before possible reshape %s' % delta_array.shape.__str__())
-        if delta_array.shape[1] == 1:
-            delta_array_size = int(np.sqrt(delta_array.shape[0]))
-            if delta_array_size ** 2 != delta_array.shape[0]:
-                raise NotImplementedError('delta array can not be reshaped to square matrix')
-            delta_array = delta_array.reshape(delta_array_size, delta_array_size)
-        logger.debug('delta array shape %s' % delta_array.shape.__str__())
-        # assert delta_array_size == self.filter_size, "delta array dimension must match with filter size"
+        return input_array
+
+    def layer_backprop(self, d, inp, delta_array, layer_index):
+        """
+        delta_array is a (input_array_size - filter_size + 1)^2/4 x 1. It should be the result of reshaping the max-pooled
+        output matrix
+        :return:
+        delta_array_last: a input_array_size x input_array_size
+        """
+        # if column array, then reshape
+
+        input_array = self.reshape_to_square_matrix(inp)
+        delta_array = self.reshape_to_square_matrix(delta_array)
         output_size = input_array.shape[0] - self.filter_size + 1
         input_size = input_array.shape[0]
         logger.debug('output size %s' % output_size)
 
-        # if delta_array_size != int((input_size - self.filter_size + 1) / pool_size):
-        #     raise NotImplementedError("Delta size needs to be appropriate with the input size")
-        weighted_input = np.zeros([output_size, output_size])
-        weight_len = self.filter_size * self.filter_size
-        weight = self.weight_array.reshape([1, weight_len])
-        for i in range(0, output_size, self.stride):
-            for j in range(0, output_size, self.stride):
-                weighted_input[i][j] = np.dot(weight,
-                                              input_array[i:i + self.filter_size][:, j:j + self.filter_size].reshape(
-                                                  [weight_len, 1])) + \
-                                       self.bias
-        activation = self.fn_activation(weighted_input)
-        activation_size = activation.shape[0]
-        max_position_array = self.get_max_position(activation)
+        activation_size = self.a.shape[0]
+        max_position_array = self.get_max_position(self.a)
         weight_gradient_array = np.zeros((self.filter_size, self.filter_size))
         for a in range(self.filter_size):
             for b in range(self.filter_size):
-                weight_gradient = 0
+                dw = 0
                 for i in range(activation_size):
                     for j in range(activation_size):
                         # only calculate for the max position element
                         if (i, j) != max_position_array[i][j]:
                             continue
-                        x = delta_array[i / self.pool_size][j / self.pool_size] * self.fn_derive(weighted_input[i][j]) * \
+                        x = delta_array[i / self.pool_size][j / self.pool_size] * self.fn_derive(self.z[i][j]) * \
                             input_array[i + a][j + b]
-                        weight_gradient += x
-                weight_gradient_array[a][b] = weight_gradient
-        # print('weight gradient array', weight_gradient_array)
-        back_delta_array = np.zeros((input_size, input_size))
-        # calc backprop from the activation array instead of from the input array
-        # this should take care of the index difference problem
-        for i in range(activation_size):
-            for j in range(activation_size):
-                if (i, j) != max_position_array[i][j]:
-                    continue
-                for a in range(self.filter_size):
-                    for b in range(self.filter_size):
-                        back_delta_array[i + a][j + b] = delta_array[i / self.pool_size][b / self.pool_size] * \
-                                                         self.fn_derive(activation[i][j]) * self.weight_array[a][b]
-
-        back_delta_array = back_delta_array / (input_size * input_size)
-        # print('back delta array', back_delta_array)
+                        dw += x
+                weight_gradient_array[a][b] = dw
         # getting average of gradient array
-        weight_gradient_array = weight_gradient_array / (self.filter_size * self.filter_size)
+        weight_gradient_array /= (self.filter_size * self.filter_size)
+
+        back_delta_array = np.zeros((input_size, input_size))
+
+        # do not calc back delta array for the first layer
+        if layer_index > 0:
+            # calc backprop from the activation array instead of from the input array
+            # this should take care of the index difference problem
+            for i in range(activation_size):
+                for j in range(activation_size):
+                    if (i, j) != max_position_array[i][j]:
+                        continue
+                    for a in range(self.filter_size):
+                        for b in range(self.filter_size):
+                            back_delta_array[i + a][j + b] = delta_array[i / self.pool_size][j / self.pool_size] * \
+                                                             self.fn_derive(self.z[i][j]) * self.weight_array[a][b]
+
+            back_delta_array = back_delta_array / (input_size * input_size)
+
         # print('weighted gradient array', weight_gradient_array)
         return weight_gradient_array, 0, back_delta_array
 
@@ -208,7 +198,7 @@ class FullyConnectedLayer(Layer):
         self.bias_array -= learning_rate * gradient_b_array
         # info('updated bias array {}', self.bias_array)
 
-    def layer_backprop(self, z, a, delta_array):
+    def layer_backprop(self, z, a, delta_array, layer_index):
         if delta_array.shape[1] != 1:
             logger.debug('delta array is not a column array, reshape')
             delta_array = delta_array.reshape(np.size(delta_array), 1)
@@ -352,7 +342,7 @@ class NNNetwork:
             a = a_s[layer_index]
             z = z_s[layer_index]
             debug('weighted input shape {}', z.shape)
-            gradient_w_array, gradient_b_array, back_delta_array = layer.layer_backprop(z, a, delta_array)
+            gradient_w_array, gradient_b_array, back_delta_array = layer.layer_backprop(z, a, delta_array, layer_index)
             gradient_w_arrays = [gradient_w_array] + gradient_w_arrays
             gradient_b_arrays = [gradient_b_array] + gradient_b_arrays
             delta_array = back_delta_array
@@ -375,8 +365,8 @@ def run_convo_network():
         # FullyConnectedLayer(inp_size=30, out_size=10),
         FullyConnectedLayer(inp_size=13 * 13, out_size=10),
     ))
-    network.sgd(training_data, epochs=50, mini_batch_size=10, learning_rate=3,
-                test_data=training_data)
+    network.sgd(training_data[:1000], epochs=50, mini_batch_size=10, learning_rate=0.01,
+                test_data=test_data[:100])
 
 
 if __name__ == '__main__':

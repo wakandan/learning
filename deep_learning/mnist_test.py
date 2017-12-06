@@ -38,7 +38,9 @@ class TestConvLayer(unittest.TestCase):
         output_size = (size - conv_layer.filter_size + 1) / 2
         delta_array_size = output_size * output_size
         delta_array = np.random.normal(size=(delta_array_size, 1))
-        weight_gradient_result, _, past_delta_result = conv_layer.layer_backprop(None, inp, delta_array)
+        z, a = conv_layer.layer_forward(inp)
+        print conv_layer.weight_array
+        weight_gradient_result, _, past_delta_result = conv_layer.layer_backprop(None, inp, delta_array, 1)
         self.assertEqual(weight_gradient_result.shape, (conv_layer.filter_size, conv_layer.filter_size))
         self.assertEqual(past_delta_result.shape, (size, size))
 
