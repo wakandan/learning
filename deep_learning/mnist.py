@@ -13,10 +13,10 @@ from cost import *
 
 
 class Layer:
-    def forward(self, inp_array):
+    def layer_forward(self, inp_array):
         raise NotImplementedError("forward of abstract class not implemented")
 
-    def backprop(self, weighted_output_array, activation_array, delta_array):
+    def layer_backprop(self, weighted_output_array, activation_array, delta_array):
         raise NotImplementedError('backprop of abstract class not implemented')
 
     def update(self, gradient_w_array, gradient_b_array, learning_rate):
@@ -55,16 +55,20 @@ class ConvoLayer(Layer):
                                self.bias
         return output, self.fn_activation(output)
 
-    def max_pooling(self, inp):
-        output_size = inp.shape[0] / self.pool_size
+    @staticmethod
+    def max_pool_helper(inp, pool_size):
+        output_size = inp.shape[0] / pool_size
         output = np.zeros([output_size, output_size])
         for i in range(output_size):
             for j in range(output_size):
                 output[i][j] = np.max(
-                    inp[i * self.pool_size:(i + 1) * self.pool_size][:, j * self.pool_size:(j + 1) * self.pool_size])
+                    inp[i * pool_size:(i + 1) * pool_size][:, j * pool_size:(j + 1) * pool_size])
         return output
 
-    def forward(self, inp):
+    def max_pooling(self, inp):
+        return ConvoLayer.max_pool_helper(inp, self.pool_size)
+
+    def layer_forward(self, inp):
         weighted_output, output = self.forward_helper(inp)
         return weighted_output, self.max_pooling(output)
 
@@ -100,7 +104,7 @@ class ConvoLayer(Layer):
         # self.bias -= learning_rate * gradient_b
         # info('updated bias {}', self.bias)
 
-    def backprop(self, inp, delta_array):
+    def layer_backprop(self, z, inp, delta_array):
         """
         delta_array is a (input_array_size - filter_size + 1)^2/4 x 1. It should be the result of reshaping the max-pooled
         output matrix
@@ -185,7 +189,7 @@ class FullyConnectedLayer(Layer):
         self.weight_array = np.random.normal(size=(out_size, inp_size))
         self.bias_array = np.random.normal(size=(out_size, 1))
 
-    def forward(self, inp):
+    def layer_forward(self, inp):
         input_shape = inp.shape
         inp_size = input_shape[0] * input_shape[1]
         inp_array = inp.reshape(inp_size, 1)
@@ -204,7 +208,7 @@ class FullyConnectedLayer(Layer):
         self.bias_array -= learning_rate * gradient_b_array
         # info('updated bias array {}', self.bias_array)
 
-    def backprop(self, z, a, delta_array):
+    def layer_backprop(self, z, a, delta_array):
         if delta_array.shape[1] != 1:
             logger.debug('delta array is not a column array, reshape')
             delta_array = delta_array.reshape(np.size(delta_array), 1)
@@ -215,6 +219,7 @@ class FullyConnectedLayer(Layer):
         assert delta_array.shape == (self.out_size, 1), \
             'delta array should have correct out size (%s, 1) observed=%s' % (self.out_size, delta_array.shape)
 
+        z = ConvoLayer.max_pool_helper(z, 2)
         back_delta_array = np.multiply(
             np.dot(self.weight_array.transpose(), delta_array),
             self.fn_derive(z).reshape(self.inp_size, 1))
@@ -233,7 +238,7 @@ class NNNetwork:
     def forward(self, inp):
         layer_input_array = inp
         for layer in self.layers:
-            _, layer_input_array = layer.forward(layer_input_array)
+            _, layer_input_array = layer.layer_forward(layer_input_array)
 
         return layer_input_array
 
@@ -318,17 +323,17 @@ class NNNetwork:
         # info('cost {}', cost)
         # info('final results {}', [(self.forward(x), y) for (x, y) in test_data])
         test_results = [(np.argmax(self.forward(x)), np.argmax(y)) for (x, y) in test_data]
-        info('test results {}'.format(sum(int(x == y) for (x, y) in test_results)*100.0/len(test_data)))
+        info('test results {}'.format(sum(int(x == y) for (x, y) in test_results) * 100.0 / len(test_data)))
         return cost
         # return sum(int(x == y) for (x, y) in test_results)
 
     def backprop(self, x, y):
         a = x
         a_s = []
-        z_s = [x] # array to store z_s
+        z_s = [x]  # array to store z_s
         for i, layer in enumerate(self.layers):
             a_s.append(a)
-            z, a = layer.forward(a)
+            z, a = layer.layer_forward(a)
             z_s.append(z)
             # logger.debug('activation shape at layer %d = %s' % (i, weighted_input_array.shape))
             # a = layer.fn_activation(weighted_input_array)
@@ -347,7 +352,7 @@ class NNNetwork:
             a = a_s[layer_index]
             z = z_s[layer_index]
             debug('weighted input shape {}', z.shape)
-            gradient_w_array, gradient_b_array, back_delta_array = layer.backprop(z, a, delta_array)
+            gradient_w_array, gradient_b_array, back_delta_array = layer.layer_backprop(z, a, delta_array)
             gradient_w_arrays = [gradient_w_array] + gradient_w_arrays
             gradient_b_arrays = [gradient_b_array] + gradient_b_arrays
             delta_array = back_delta_array
@@ -363,12 +368,12 @@ def run_convo_network():
     print('loaded data', len(training_data))
 
     network = NNNetwork(layers=(
-        # ConvoLayer(),
-        FullyConnectedLayer(inp_size=28 * 28, out_size=32),
+        ConvoLayer(),
+        # FullyConnectedLayer(inp_size=28 * 28, out_size=32),
         # FullyConnectedLayer(inp_size=64, out_size=64),
-        FullyConnectedLayer(inp_size=32, out_size=10),
+        # FullyConnectedLayer(inp_size=32, out_size=10),
         # FullyConnectedLayer(inp_size=30, out_size=10),
-        # FullyConnectedLayer(inp_size=13*13, out_size=10),
+        FullyConnectedLayer(inp_size=13 * 13, out_size=10),
     ))
     network.sgd(training_data, epochs=50, mini_batch_size=10, learning_rate=3,
                 test_data=training_data)
