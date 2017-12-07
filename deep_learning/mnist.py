@@ -361,17 +361,17 @@ def run_convo_network():
     print('loaded data', len(training_data))
     network = NNNetwork(layers=(
         # FullyConnectedLayer(inp_size=28 * 28, out_size=14 * 14),
-        ConvoLayer(),
+        ConvoLayer(filter_size=5),
         # ConvoLayer(filter_size=3),
         # FullyConnectedLayer(inp_size=28 * 28, out_size=32),
         # FullyConnectedLayer(inp_size=64, out_size=64),
         # FullyConnectedLayer(inp_size=32, out_size=10),
         # FullyConnectedLayer(inp_size=30, out_size=10),
-        FullyConnectedLayer(inp_size=13 * 13, out_size=10),
+        FullyConnectedLayer(inp_size=12 * 12, out_size=10),
     ))
     filename = 'network.pickle'
 
-    network.sgd(training_data[:10000], epochs=5000, mini_batch_size=20, learning_rate=1e-3,
+    network.sgd(training_data, epochs=5000, mini_batch_size=20, learning_rate=1e-3,
                 test_data=test_data[:3000])
 
 
