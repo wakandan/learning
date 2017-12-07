@@ -39,12 +39,48 @@ class TestConvLayer(unittest.TestCase):
         delta_array_size = output_size * output_size
         delta_array = np.random.normal(size=(delta_array_size, 1))
         z, a = conv_layer.layer_forward(inp)
-        print conv_layer.weight_array
         weight_gradient_result, _, past_delta_result = conv_layer.layer_backprop(None, inp, delta_array, 1)
         self.assertEqual(weight_gradient_result.shape, (conv_layer.filter_size, conv_layer.filter_size))
         self.assertEqual(past_delta_result.shape, (size, size))
 
+    def test_backprop_2(self):
+        size = 6
+        inp_size = 1000
+        kernel = np.random.normal(size=(3, 3))
+        print 'kernel', kernel
+        convo = ConvoLayer()
+        convo.weight_array = kernel
+        inp = [np.random.normal(size=(size, size)) for i in range(inp_size)]
+        out = []
+        for i, test in enumerate(inp):
+            _, forward = convo.layer_forward(test)
+            out.append(forward)
+        test_size = 10
+
+        test_inp = [np.random.normal(size=(size, size)) for i in range(test_size)]
+        test_out = []
+        for i, test in enumerate(test_inp):
+            _, forward = convo.layer_forward(test)
+            test_out.append(forward)
+        learning_rate = 0.15
+        network = NNNetwork(layers=[
+            ConvoLayer()
+        ])
+        data = zip(inp, out)
+        test = zip(test_inp, test_out)
+        network.sgd(data, learning_rate=learning_rate, epochs=300, mini_batch_size=10, test_data=test)
+
     def test_max_position_array(self):
+        size = 10
+        inp = np.arange(size * size).reshape(size, size)
+        conv_layer = ConvoLayer()
+        out = conv_layer.get_max_position(inp)
+        self.assertEqual(len(out), 10)
+        self.assertEqual(len(out[0]), 10)
+        self.assertEqual(out[2][2], (3, 3))
+
+    def test_max_position_array_2(self):
+        np.asarray([1, 2, 3, 4])
         size = 10
         inp = np.arange(size * size).reshape(size, size)
         conv_layer = ConvoLayer()
