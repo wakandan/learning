@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 
 from cost import CrossEntropyCost
+from cost import sigmoid
 from mnist import ConvoLayer, FullyConnectedLayer
 from mnist import NNNetwork
 from cost import QuadraticCost
@@ -62,7 +63,7 @@ class TestConvLayer(unittest.TestCase):
         for i, test in enumerate(test_inp):
             _, forward = convo.layer_forward(test)
             test_out.append(forward)
-        learning_rate = 0.15
+        learning_rate = 0.015
         network = NNNetwork(layers=[
             ConvoLayer()
         ])
@@ -111,6 +112,17 @@ class TestFullyConnected(unittest.TestCase):
         self.assertEqual((10, 1), back_delta_array.shape)
         self.assertEqual((5, 1), gradient_b_array.shape)
         self.assertEqual((5, 10), gradient_w_array.shape)
+
+    def test_backprop_1(self):
+        inp = [np.random.normal(size=(10, 1)) for i in range(1000)]
+        out = [sigmoid(i * 10 + 0.02) for i in inp]
+        network = NNNetwork(layers=[
+            FullyConnectedLayer(inp_size=10, out_size=20),
+            FullyConnectedLayer(inp_size=20, out_size=10)
+        ])
+        train = zip(inp[:900], out[:900])
+        test = zip(inp[900:910], out[900:910])
+        network.sgd(train, epochs=10000, learning_rate=0.2, test_data=test)
 
     def test_backprop_with_epoch(self):
         input_size = 100

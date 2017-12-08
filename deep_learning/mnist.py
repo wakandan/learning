@@ -180,8 +180,10 @@ class FullyConnectedLayer(Layer):
 
     def layer_forward(self, inp):
         input_shape = inp.shape
-        inp_size = input_shape[0] * input_shape[1]
-        inp_array = inp.reshape(inp_size, 1)
+        inp_array = inp
+        if inp.shape[1] != 1:
+            inp_size = input_shape[0] * input_shape[1]
+            inp_array = inp.reshape(inp_size, 1)
         logger.debug('input size %s' % str(self.inp_size))
         assert inp_array.shape == (self.inp_size, 1), "inp.shape %s != (inp_size, 1) (%s, 1)" \
                                                       % (inp_array.shape, self.inp_size)
@@ -290,7 +292,7 @@ class NNNetwork:
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
 
-    def sgd(self, training_data, epochs, mini_batch_size, learning_rate, test_data=None):
+    def sgd(self, training_data, epochs, learning_rate, mini_batch_size=10, test_data=None):
         n = len(training_data)
         for j in range(epochs):
             # do momentun for learning rate
@@ -314,13 +316,14 @@ class NNNetwork:
         network outputs the correct result. Note that the neural
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
-        # forward = [self.forward(x) for (x, y) in test_data]
         forward = [self.cost.fn(self.forward(x), y) for (x, y) in test_data]
         # print 'evaluate loss', forward
         cost = np.sum(forward) / len(test_data)
         # info('cost {}', cost)
         # pprint([self.forward(x).flatten() for (x, y) in test_data])
-        test_results = [(np.argmax(self.forward(x)), np.argmax(y)) for (x, y) in test_data]
+        test_results = [(np.argmax(self.forward(x)), y) for (x, y) in test_data]
+        # print test_results
+        # exit()
         info('test results {}'.format(sum(int(x == y) for (x, y) in test_results) * 100.0 / len(test_data)))
         # print self.layers[0].weight_array.flatten().tolist()
         return cost
@@ -339,6 +342,7 @@ class NNNetwork:
         logger.debug('activation array shape %s' % a.shape.__str__())
         assert y.shape == a.shape, 'activation array and output should have the same size'
         delta_array = self.cost.delta(z_s[-1], a, y)
+        # print z_s[-1].tolist()
         # gradient w and b for each layers
         gradient_w_arrays = []
         gradient_b_arrays = []
@@ -360,18 +364,17 @@ def run_convo_network():
     training_data, validation_data, test_data, training_test_data = mnist_loader.load_data_wrapper()
     print('loaded data', len(training_data))
     network = NNNetwork(layers=(
-        # FullyConnectedLayer(inp_size=28 * 28, out_size=14 * 14),
-        ConvoLayer(filter_size=5),
+        FullyConnectedLayer(inp_size=28 * 28, out_size=32),
+        # ConvoLayer(filter_size=5),
         # ConvoLayer(filter_size=3),
         # FullyConnectedLayer(inp_size=28 * 28, out_size=32),
         # FullyConnectedLayer(inp_size=64, out_size=64),
         # FullyConnectedLayer(inp_size=32, out_size=10),
         # FullyConnectedLayer(inp_size=30, out_size=10),
-        FullyConnectedLayer(inp_size=12 * 12, out_size=10),
+        FullyConnectedLayer(inp_size=32, out_size=10),
     ))
     filename = 'network.pickle'
-
-    network.sgd(training_data, epochs=5000, mini_batch_size=20, learning_rate=1e-3,
+    network.sgd(training_data, epochs=5000, mini_batch_size=20, learning_rate=1e-2,
                 test_data=test_data[:3000])
 
 
