@@ -316,12 +316,13 @@ class NNNetwork:
         network outputs the correct result. Note that the neural
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
+
         forward = [self.cost.fn(self.forward(x), y) for (x, y) in test_data]
         # print 'evaluate loss', forward
         cost = np.sum(forward) / len(test_data)
         # info('cost {}', cost)
         # pprint([self.forward(x).flatten() for (x, y) in test_data])
-        test_results = [(np.argmax(self.forward(x)), y) for (x, y) in test_data]
+        test_results = [(np.argmax(self.forward(x)), np.argmax(y)) for (x, y) in test_data]
         # print test_results
         # exit()
         info('test results {}'.format(sum(int(x == y) for (x, y) in test_results) * 100.0 / len(test_data)))
@@ -374,8 +375,12 @@ def run_convo_network():
         FullyConnectedLayer(inp_size=32, out_size=10),
     ))
     filename = 'network.pickle'
+    # turn test data into 1 one hot array
+    test = [(x, np.zeros(10)) for (x, y) in test_data]
+    for i, (x, y) in enumerate(test_data):
+        test[i][1][y] = 1
     network.sgd(training_data, epochs=5000, mini_batch_size=20, learning_rate=1e-2,
-                test_data=test_data[:3000])
+                test_data=test[:3000])
 
 
 if __name__ == '__main__':
