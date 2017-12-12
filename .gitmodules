@@ -4,6 +4,3 @@
 [submodule "handson-ml"]
 	path = handson-ml
 	url = git@github.com:vforce/handson-ml.git
-[submodule "TensorFlow-Examples"]
-	path = TensorFlow-Examples
-	url = https://github.com/aymericdamien/TensorFlow-Examples.git
