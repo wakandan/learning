@@ -1,3 +1,9 @@
 [submodule "neural-networks-and-deep-learning"]
 	path = neural-networks-and-deep-learning
 	url = https://github.com/mnielsen/neural-networks-and-deep-learning.git
+[submodule "handson-ml"]
+	path = handson-ml
+	url = git@github.com:vforce/handson-ml.git
+[submodule "TensorFlow-Examples"]
+	path = TensorFlow-Examples
+	url = https://github.com/aymericdamien/TensorFlow-Examples.git
