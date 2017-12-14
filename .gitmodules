@@ -10,3 +10,6 @@
 [submodule "rnn-tutorial-rnnlm"]
 	path = rnn-tutorial-rnnlm
 	url = git@github.com:vforce/rnn-tutorial-rnnlm.git
+[submodule "tensorflow-rnn-shakespeare"]
+	path = tensorflow-rnn-shakespeare
+	url = git@github.com:vforce/tensorflow-rnn-shakespeare.git
