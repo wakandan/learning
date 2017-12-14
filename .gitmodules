@@ -7,3 +7,6 @@
 [submodule "TensorFlow-Examples"]
 	path = TensorFlow-Examples
 	url = git@github.com:vforce/TensorFlow-Examples.git
+[submodule "rnn-tutorial-rnnlm"]
+	path = rnn-tutorial-rnnlm
+	url = git@github.com:vforce/rnn-tutorial-rnnlm.git
