@@ -1,31 +1,9 @@
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
+import itertools
 
 file_name = '0002_01.jpg'
-img = cv2.imread(file_name, 0)
-print(img)
-print(img.shape)
-replicate = cv2.copyMakeBorder(img, 0, 3, 0, 13, cv2.BORDER_REPLICATE)
-# cv2.imshow(replicate)
-# plt.imshow(replicate, cmap='gray', interpolation='bicubic')
-# plt.show()
-print(replicate.shape)
-GRID_COL = 7
-GRID_ROW = 7
-blocks = []
-width = replicate.shape[0]
-height = replicate.shape[1]
-block_width = int(width / GRID_COL)
-block_height = int(height / GRID_ROW)
-print(block_width, block_height)
-for i in range(GRID_ROW):
-    blocks.append([].copy())
-    for j in range(GRID_COL):
-        block = replicate[i * block_width:(i + 1) * block_width, j * block_height:(j + 1) * block_height]
-        blocks[i].append(block)
-
-import itertools
 
 
 def is_uniform(pattern):
@@ -137,12 +115,41 @@ def process_block(block):
     sorted_patterns = sort_patterns(patterns)
     return sorted_patterns
 
-all_histograms = []
-for i in range(len(blocks)):
-    for j in range(len(blocks[0])):
-        block = blocks[i][j]
-        histogram = process_block(block)
-        all_histograms.append(histogram)
 
-print(len(all_histograms))
-print(all_histograms)
+def extract_lbp_histogram(blocks):
+    all_histograms = []
+    for i in range(len(blocks)):
+        for j in range(len(blocks[0])):
+            block = blocks[i][j]
+            histogram = process_block(block)
+            all_histograms.append(histogram)
+    return all_histograms
+
+
+def get_file_lbp(file_name):
+    print("processing filename {}".format(file_name))
+    img = cv2.imread(file_name, 0)
+    print(img.shape)
+    replicate = cv2.copyMakeBorder(img, 0, 3, 0, 13, cv2.BORDER_REPLICATE)
+    # cv2.imshow(replicate)
+    # plt.imshow(replicate, cmap='gray', interpolation='bicubic')
+    # plt.show()
+    print(replicate.shape)
+    GRID_COL = 7
+    GRID_ROW = 7
+    blocks = []
+    width = replicate.shape[0]
+    height = replicate.shape[1]
+    block_width = int(width / GRID_COL)
+    block_height = int(height / GRID_ROW)
+    print(block_width, block_height)
+    for i in range(GRID_ROW):
+        blocks.append([].copy())
+        for j in range(GRID_COL):
+            block = replicate[i * block_width:(i + 1) * block_width, j * block_height:(j + 1) * block_height]
+            blocks[i].append(block)
+    return extract_lbp_histogram(blocks)
+
+
+person_1_histogram = get_file_lbp(file_name)
+print(person_1_histogram)
