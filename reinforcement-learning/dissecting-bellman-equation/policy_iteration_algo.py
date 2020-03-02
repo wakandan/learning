@@ -44,7 +44,10 @@ def return_policy_evaluation(p, u, r, T, gamma):
             np.sum() = expected utility of all next states
             """
             action = int(p[s])
-            u[s] = r[s] + gamma * np.sum(np.multiply(u, np.dot(v, T[:, :, action])))
+            # u[s] = r[s] + gamma * np.sum(np.multiply(u, np.dot(v, T[:, :, action])))
+            u[s] = np.linalg.solve(np.identity(12) - gamma * T[:, :, int(p[s])], r)[s]
+            # u[s] = np.dot(np.linalg.inv(np.identity(12) - gamma * T[:, :, int(p[s])]), r)[s]
+
     return u
 
 

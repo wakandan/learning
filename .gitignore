@@ -1,1 +1,8 @@
 .idea
+tensorflow/tensorboard_logs/
+discharge-detection/.ipynb_checkpoints/
+deep_learning/__pycache__/ rnn-tutorial-rnnlm/__pycache__/ tensorflow-rnn-shakespeare/__pycache__/
+__pycache__
+.ipynb_checkpoints
+*.pyc
+*.swp
